@@ -1,8 +1,9 @@
 from flask import Flask
 from flask_bootstrap import Bootstrap
 from flask_mail import Mail
-from config import config
 from flask_login import LoginManager
+
+from config import config
 
 bootstrap = Bootstrap()
 mail = Mail()
@@ -37,5 +38,8 @@ def create_app(config_name):
     # url_prefix means that its url will be http://localhost:5000/auth/login
     from .auth import auth
     app.register_blueprint(auth, url_prefix='/auth')
+
+    from .main import main
+    app.register_blueprint(main)
 
     return app
