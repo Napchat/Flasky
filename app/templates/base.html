@@ -33,6 +33,18 @@
 
 {% block content %}
 <div class='container'>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class='alert alert-info'>
+                <button type='button' class='close' data-dismiss='alert'>&times;</button>
+                <Strong>
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+                </Strong>
+            </div>
+        {% endif %}
+    {% endwith %}
     {% block page_content %}{% endblock %}
 </div>
 {% endblock %}
