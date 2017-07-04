@@ -1,19 +1,13 @@
-{% extends 'base.html' %}
+<p>Dear {{ user.username }},</p>
 
-{% block title %}Flasky - Welcome{% endblock %}
+<p>Welcome to Flasky!</p>
 
-{% block page_content %}
-    <p>Dear {{ user.username }},</p>
+<p>To confirm your account please click on the following link:</p>
 
-    <p>Welcome to Flasky!</p>
+<a href="{{ url_for('auth.confirm', token=token, _external=True) }}">Click here to confirm</a>
 
-    <p>To confirm your account please click on the following link:</p>
+<p>Sincerely,</p>
 
-    <p><a href="{{ url_for('auth.confirm', token=token) }}"</a></p>
+<p>The Flasky Team</p>
 
-    <p>Sincerely,</p>
-
-    <p>The Flasky Team</p>
-
-    <p>Note: replies to this email address are not monitored.</p>
-{% endblock %}
+<p>Note: replies to this email address are not monitored.</p>

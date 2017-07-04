@@ -8,7 +8,7 @@ from ..email import send_email
 
 @auth.before_app_request
 def before_request():
-    if current_user.is_authenticated() \
+    if current_user.is_authenticated \
             and not current_user.confirmed \
             and request.endpoint[:5] != 'auth.':
         return redirect(url_for('auth.unconfirmed'))
@@ -66,7 +66,7 @@ def confirm(token):
 
 @auth.route('/unconfirmed')
 def unconfirmed():
-    if current_user.is_anoymous() or current_user.confirmed:
+    if current_user.is_anonymous or current_user.confirmed:
         return redirect('main.index')
     return render_template('auth/unconfirmed.html')
 
@@ -74,17 +74,20 @@ def unconfirmed():
 @login_required
 def resend_confirmation():
     token = current_user.generate_confirmation_token()
-    send_email(curren_user.email, 'Confirm Your Account', \
+    send_email(current_user.email, 'Confirm Your Account', \
                'auth/email/confirm', user=current_user, token=token)
     flash('A new confirmation email has been sent to you by email.')
     return redirect(url_for('main.index'))
     
-@auth.route('/updatepassword')
+@auth.route('/update-password', methods=['GET', 'POST'])
 @login_required
 def update_password():
     form = UpdatePasswordForm()
-    if form.validate_on_submit() and current_user.confirm():
-        current_user.password = form.new_password.data
-        db.session.add(current_user)
-        db.session.commit()
-        return redirect(url_for(''))
+    if form.validate_on_submit():
+        if current_user.verify_password(form.old_password.data):
+            current_user.password = form.new_password.data
+            db.session.add(current_user)
+            db.session.commit()
+            flash('You have successfully updateded your password.')
+            return redirect(url_for('main.user'))
+    return render_template('auth/update_password.html', form=form)
