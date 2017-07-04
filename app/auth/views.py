@@ -3,7 +3,7 @@ from flask_login import login_user, login_required, logout_user, current_user
 
 from . import auth
 from ..models import User, db
-from .forms import LoginForm, RegistrationForm
+from .forms import LoginForm, RegistrationForm, UpdatePasswordForm
 from ..email import send_email
 
 @auth.before_app_request
@@ -50,7 +50,6 @@ def register():
         token = u.generate_confirmation_token()
         send_email(user.email, 'Confirm Your Account', 'auth/email/confirm', user=user, token=token)
         flash('We send a email to you for confirmation, please check your emailbox.')
-        login_user(u)
         return redirect(url_for('main.index'))
     return render_template('auth/register.html', form=form)
 
@@ -80,3 +79,12 @@ def resend_confirmation():
     flash('A new confirmation email has been sent to you by email.')
     return redirect(url_for('main.index'))
     
+@auth.route('/updatepassword')
+@login_required
+def update_password():
+    form = UpdatePasswordForm()
+    if form.validate_on_submit() and current_user.confirm():
+        current_user.password = form.new_password.data
+        db.session.add(current_user)
+        db.session.commit()
+        return redirect(url_for(''))
