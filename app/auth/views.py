@@ -15,6 +15,7 @@ def before_request():
     if current_user.is_authenticated \
             and not current_user.confirmed \
             and request.endpoint[:5] != 'auth.':
+        current_user.ping()
         return redirect(url_for('auth.unconfirmed'))
 
 @auth.route('/login', methods=['GET', 'POST'])

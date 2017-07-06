@@ -103,3 +103,4 @@ ENV/
 .vscode/
 *.sqlite
 migrations/
+tmp/
