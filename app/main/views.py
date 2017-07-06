@@ -2,9 +2,9 @@ from flask import render_template, redirect, flash, url_for
 from flask_login import login_required, current_user
 
 from . import main
-from ..models import User
+from ..models import User, db, Role
 from ..decorators import permission_required, admin_required
-from .forms import EditProfileForm
+from .forms import EditProfileForm, EditProfileAdminForm
 
 @main.route('/')
 @main.route('/index')
@@ -34,7 +34,7 @@ def edit_profile():
     form.name.data = current_user.name
     form.location.data = current_user.location
     form.about_me.data = current_user.about_me
-    return render_template('edit_profile.html', form=form)
+    return render_template('main/edit_profile.html', form=form)
 
 @main.route('/edit-profile/<int:id>', methods=['GET', 'POST'])
 @login_required
