@@ -1,7 +1,9 @@
-from . import main
 from flask import render_template, redirect, flash, url_for
 from flask_login import login_required, current_user
+
+from . import main
 from ..models import User
+from ..decorators import permission_required, admin_required
 
 @main.route('/')
 @main.route('/index')

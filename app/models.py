@@ -1,6 +1,6 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
+from flask_login import UserMixin, AnonymousUserMixin
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app
 
@@ -8,20 +8,32 @@ from . import login_manager
 
 db = SQLAlchemy()
 
+class Permission:
+    FOLLOW = 0x01
+    COMMENT = 0x02
+    WRITE_ARTICLES = 0x04
+    MODERATE_COMMENTS = 0x08
+    ADMINISTER = 0x80
+
 class User(db.Model, UserMixin):
-    '''The ``UserMixin`` implements four function that Flask_Login needs.
+    '''The ``UserMixin`` implements four function(property) that Flask_Login needs.
     meth: is_authenticated(); is_active(); is_anonymous; get_id()
     '''
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(64), unique=True, index=True)
     username = db.Column(db.String(64), unique=True, index=True)
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+    role_name = db.Column(db.String(64), db.ForeignKey('roles.name'))
     password_hash = db.Column(db.String(128))
     confirmed = db.Column(db.Boolean, default=False)
 
-    def __repr__(self):
-        return '<User %r>' % self.username
+    def __init__(self, **kwargs):
+        super(User, self).__init__(**kwargs)
+        if self.role is None:
+            if self.email == current_app.config['ADMIN']:
+                self.role = Role.query.filter_by(permissions=0xff).first()
+            if self.role is None:
+                self.role = Role.query.filter_by(default=True).first()
 
     @property
     def password(self):
@@ -66,11 +78,62 @@ class User(db.Model, UserMixin):
         db.session.commit()
         return True
 
+    def can(self, permission):
+        return self.role is not None and (self.role.permissions & permissions) == permissions
+
+    def is_administrator(self):
+        return self.can(Permission.ADMINISTER)
+
+    def __repr__(self):
+        return '<User %r>' % self.username
+
+class AnonymousUser(AnonymousUserMixin):
+    '''When the user is not logged_in, `current_user` is set to the object of this class.
+    This will enable the application to freely call `current_user.can()` and `current_user.is_administrator()`
+    without having to check whether the user is logged in first.
+    '''
+    def can(self, permission):
+        return False
+
+    def is_administrator(self):
+        return False
+
 class Role(db.Model):
     __tablename__ = 'roles'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True)
+
+    # the `default` field should be set to True for only one role and False for all the others.
+    # the role marked as default will be the one assigned to new users upon registration.
+    default = db.Column(db.Boolean, default=False, index=True)
+
+    # this field is an integer that will be used as bit flags.
+    # each task will be assigned a bit position, and for each role the tasks that are allowed for that
+    # role will have their bits set to 1.
+    permissions = db.Column(db.Integer)
     users = db.relationship('User', backref='role', lazy='dynamic')
+
+    @staticmethod
+    def insert_roles():
+        '''Update and insert roles.'''
+        roles = {
+            'User': (Permission.FOLLOW |
+                     Permission.COMMENT |
+                     Permission.WRITE_ARTICLES, True),
+            'Moderator': (Permission.FOLLOW |
+                          Permission.COMMENT |
+                          Permission.WRITE_ARTICLES |
+                          Permission.MODERATE_COMMENTS, False),
+            'Administrator': (0xff, False)
+        }
+        for r in roles:
+            role = Role.query.filter_by(name=r).first()
+            if role is None:
+                role = Role(name=r)
+            role.permissions = roles[r][0]
+            role.default = roles[r][1]
+            db.session.add(role)
+        db.session.commit()
 
     def __repr__(self):
         return '<Role %r>' % self.name

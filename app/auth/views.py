@@ -2,9 +2,13 @@ from flask import render_template, redirect, request, url_for, flash, session
 from flask_login import login_user, login_required, logout_user, current_user
 
 from . import auth
-from ..models import User, db
+from ..models import User, db, Role
 from .forms import LoginForm, RegistrationForm, UpdatePasswordForm, PasswordResetRequestForm, PasswordResetForm
 from ..email import send_email
+
+@auth.before_app_first_request
+def before_first_request():
+    Role.insert_roles()
 
 @auth.before_app_request
 def before_request():

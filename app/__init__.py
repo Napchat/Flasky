@@ -25,7 +25,7 @@ def create_app(config_name):
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
 
-    from app.models import db
+    from .models import db
     db.init_app(app)
 
     bootstrap.init_app(app)
