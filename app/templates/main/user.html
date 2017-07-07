@@ -55,5 +55,13 @@
             </p>
         </div>
     </div>
+    <hr>
+    <h3>Posts by {{ user.username }}</h3>
+    <div>
+        {% include 'main/_posts.html' %}
+    </div>
+    <div>
+        {{ macros.pagination_widget(pagination, 'main.index') }}
+    </div>
 </div>
 {% endblock %}

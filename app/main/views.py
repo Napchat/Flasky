@@ -1,15 +1,36 @@
-from flask import render_template, redirect, flash, url_for
+from flask import render_template, redirect, flash, url_for, request, current_app
 from flask_login import login_required, current_user
 
 from . import main
-from ..models import User, db, Role
+from ..models import User, db, Role, Permission, Post
 from ..decorators import permission_required, admin_required
-from .forms import EditProfileForm, EditProfileAdminForm
+from .forms import EditProfileForm, EditProfileAdminForm, PostForm
 
-@main.route('/')
-@main.route('/index')
+@main.route('/', methods=['GET', 'POST'])
+@main.route('/index', methods=['GET', 'POST'])
+@login_required
 def index():
-    return render_template('main/index.html')
+    form = PostForm()
+    if current_user.can(Permission.WRITE_ARTICLES) and \
+            form.validate_on_submit():
+        # `current_user` is a LocalProxy() instance, it is readlly a thin
+        # wrapper that contains the actual user object inside. If you want to 
+        # get the real user object, you need to call `_get_current_object()`
+        post = Post(body=form.body.data, 
+                    author=current_user._get_current_object())
+        db.session.add(post)
+        db.session.commit()
+        return redirect(url_for('main.index'))
+
+    # The page number to render is obrained from the request's query string, which
+    # is available as `request.args`. When an explicit page isn't given, a default
+    # page of 1(the first page) is used. The `type=int` argument ensures that if the 
+    # argument cannot be converted to an integer, the default value is returned.
+    page = request.args.get('page', 1, type=int)
+    pagination = Post.query.order_by(Post.timestamp.desc()).paginate( \
+        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], error_out=False)
+    posts = pagination.items
+    return render_template('main/index.html', form=form, posts=posts, pagination=pagination)
 
 @main.route('/user/<username>')
 @login_required
@@ -18,7 +39,8 @@ def user(username):
     if user is None:
         flash('User %s is not found.' % username)
         abort(404)
-    return render_template('main/user.html', user=user)
+    posts = user.posts.order_by(Post.timestamp.desc()).all()
+    return render_template('main/user.html', user=user, posts=posts)
 
 @main.route('/edit-profile', methods=['GET', 'POST'])
 @login_required
@@ -62,3 +84,8 @@ def edit_profile_admin(id):
     form.location.data = user.location
     form.about_me.data = user.about_me
     return render_template('main/edit_profile.html', form=form, user=user)
+
+@main.route('/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit(id):
+    pass

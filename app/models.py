@@ -33,6 +33,7 @@ class User(db.Model, UserMixin):
     location = db.Column(db.String(64))
     about_me = db.Column(db.Text())
     avatar_hash = db.Column(db.String(32))
+    posts = db.relationship('Post', backref='author', lazy='dynamic')
 
     # `datatime.utcnow` is missing the () at the end. This is because the `default` argument
     # to `db.Column()` can take a function as a default value, so each time a default value
@@ -168,6 +169,13 @@ class Role(db.Model):
 
     def __repr__(self):
         return '<Role %r>' % self.name
+
+class Post(db.Model):
+    __tablename__ = 'post'
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
 @login_manager.user_loader
 def load_user(user_id):

@@ -1,0 +1,41 @@
+{% macro pagination_widget(pagination, endpoint) %}
+<ul class='pagination'>
+
+    <!-- A 'previous page' link -->
+    <li{% if not pagination.has_prev %} class='disabled'{% endif %}>
+        <a href="{% if pagination.has_prev %}{{ url_for(endpoint,
+            page=pagination.page-1, **kwargs) }}{% else %}#{% endif %}">
+            &laquo;
+        </a>
+    </li>
+
+    <!-- links to the all pages with an explicit page number, the page
+    currently displayed is highlighted using the `active CSS` class,
+    `Gaps` in the sequence of pages are rendered with the ellipsis character
+    -->
+    {% for p in pagination.iter_pages() %}
+        {% if p %}
+            {% if p==pagination.page %}
+            <li class='activate'>
+                <a href="{{ url_for(endpoint, page=p, **kwargs) }}">{{ p }}</a>
+            </li>
+            {% else %}
+             <li>
+                <a href="{{ url_for(endpoint, page=p, **kwargs) }}">{{ p }}</a>
+            </li>
+            {% endif %}
+        {% else %}
+        <li class='disabled'><a href='#'>&hellip;</a></li>
+        {% endif %}
+    {% endfor %}
+
+    <!-- A 'next page' link -->
+    <li{% if not pagination.has_next %} class='disabled'{% endif %}>
+        <a href='{% if pagination.has_next %}{{ url_for(endpoint,
+            page=pagination.page+1, **kwargs) }}{% else %}#{% endif %}'>
+            &raquo;
+        </a>
+    </li>
+
+</ul>
+{% endmacro %}
