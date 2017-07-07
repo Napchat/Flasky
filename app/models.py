@@ -6,6 +6,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, AnonymousUserMixin
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app, request
+from markdown import markdown
+import bleach
 
 from . import login_manager
 
@@ -176,6 +178,35 @@ class Post(db.Model):
     body = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    body_html = db.Column(db.Text)
+
+    @staticmethod
+    def on_changed_body(target, value, oldvalue, initiator):
+        '''The function renders the HTML version of the body and stores
+        it in body_html, effectively making the conversion of the Mark-down
+        text to HTML fully automatic.
+
+        the actual conversion is donw in three steps in `meth: target_body_html`:
+
+            First, the `markdown()` function does an initial conversion to HTML.
+
+            Second, the resualt from the first step is passed to `clean()`, along
+        with the list of approved HTML tags. The `clean()` function removes any tags
+        not on the white list.
+
+            Finally, function `linkify()` provided by Bleach converts any URLs written
+        in plain text into proper <a> links. This last step is necessary because automatic
+        link generation is not officially in the Markdown specification. PageDown supports 
+        it as an extension. 
+        '''
+        allowed_tags = ['a', 'abbr', 'acronym', 'b', 'blockquote', 'code',
+                        'en', 'i', 'li', 'ol', 'pre', 'strong', 'ul',
+                        'h1', 'h2', 'h3', 'p']
+                        
+        target_body_html = bleach.linkify(bleach.clean(
+            markdown(value, output_format='html'),
+            tags=allowed_tags, strip=True
+        ))
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -183,3 +214,8 @@ def load_user(user_id):
     given the identifier. The return value of the function must be the user object if available.
     '''
     return User.query.get(int(user_id))
+
+# The `on_changed_body` function is registered as a listener of SQLAlchemy's
+# 'set' event for `body`, which means that it will be automatically invoked
+# whenever the `body` field on any instance of the class is set to a new value.
+db.event.listen(Post.body, 'set', Post.on_changed_body)
