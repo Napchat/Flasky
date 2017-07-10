@@ -203,7 +203,7 @@ class Post(db.Model):
                         'en', 'i', 'li', 'ol', 'pre', 'strong', 'ul',
                         'h1', 'h2', 'h3', 'p']
 
-        target_body_html = bleach.linkify(bleach.clean(
+        target.body_html = bleach.linkify(bleach.clean(
             markdown(value, output_format='html'),
             tags=allowed_tags, strip=True
         ))

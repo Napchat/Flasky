@@ -4,12 +4,6 @@ from flask_login import current_user
 from .models import Permission
 
 from flask import abort
-def async_mail(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        thr = Thread(target=f, args=args, kwargs=kwargs)
-        thr.start()
-    return wrapper
 
 def permission_required(permission):
     def decorator(f):
