@@ -20,6 +20,12 @@ class Permission:
     MODERATE_COMMENTS = 0x08
     ADMINISTER = 0x80
 
+class Follow(db.Model):
+    __tablename__ = 'follows'
+    follower_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    followed_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
 class User(db.Model, UserMixin):
     '''The ``UserMixin`` implements four function(property) that Flask_Login needs.
     meth: is_authenticated(); is_active(); is_anonymous; get_id()
@@ -36,6 +42,23 @@ class User(db.Model, UserMixin):
     about_me = db.Column(db.Text())
     avatar_hash = db.Column(db.String(32))
     posts = db.relationship('Post', backref='author', lazy='dynamic')
+
+    # `user.followed` is a list of instances of `Follow` where `follower_id = user.id`. 
+    # and in table `Follow`, `follower` is a list of instances of `User`. 
+    followed = db.relationship(
+        'Follow',
+        foreign_keys=[Follow.follower_id],
+        backref=db.backref('follower', lazy='joined'),
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+    followers = db.relationship(
+        'Follow',
+        foreign_keys=[Follow.followed_id],
+        backref=db.backref('followed', lazy='joined'),
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
 
     # `datatime.utcnow` is missing the () at the end. This is because the `default` argument
     # to `db.Column()` can take a function as a default value, so each time a default value
@@ -54,6 +77,7 @@ class User(db.Model, UserMixin):
 
         if self.email is not None and self.avatar_hash is None:
             self.avatar_hash = hashlib.md5(self.email.encode('utf-8')).hexdigest()
+        self.followed.append(Follow(followed=self))
 
     @property
     def password(self):
@@ -117,6 +141,30 @@ class User(db.Model, UserMixin):
         hash = self.avatar_hash or hashlib.md5(self.email.encode('utf-8')).hexdigest()
         return '{url}/{hash}?s={size}&d={default}&r={rating}'.format(
             url=url, hash=hash, size=size, default=default, rating=rating)
+
+    def follow(self, user):
+        if not self.is_following(user):
+            f = Follow(follower=self, followed=user)
+            db.session.add(f)
+            db.session.commit()
+
+    def unfollow(self, user):
+        f = self.followed.filter_by(followed_id=user.id).first()
+        if f:
+            db.session.delete(f)
+            db.sessino.commit()
+
+    def is_following(self, user):
+        return self.followed.filter_by(followed_id=user.id).first() is not None
+
+    def is_followed_by(self, user):
+        return self.followers.filter_by(follower_if=user.id).first() is not None
+
+    @property
+    def followed_posts(self):
+        '''Show your posts and the posts of whom you followed'''
+        return Post.query.join(Follow, Follow.followed_id==Post.author_id) \
+            .filter(Follow.follower_id==self.id)
 
     def __repr__(self):
         return '<User %r>' % self.username
