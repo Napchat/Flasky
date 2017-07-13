@@ -2,9 +2,9 @@ from flask import render_template, redirect, flash, url_for, request, current_ap
 from flask_login import login_required, current_user
 
 from . import main
-from ..models import User, db, Role, Permission, Post, Follow
+from ..models import User, db, Role, Permission, Post, Follow, Comments
 from ..decorators import permission_required, admin_required
-from .forms import EditProfileForm, EditProfileAdminForm, PostForm
+from .forms import EditProfileForm, EditProfileAdminForm, PostForm, CommentForm
 
 @main.route('/', methods=['GET', 'POST'])
 @main.route('/index', methods=['GET', 'POST'])
@@ -27,10 +27,12 @@ def index():
     # page of 1(the first page) is used. The `type=int` argument ensures that if the 
     # argument cannot be converted to an integer, the default value is returned.
     page = request.args.get('page', 1, type=int)
-    pagination = current_user.followed_posts.order_by(Post.timestamp.desc()).paginate( \
-        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], error_out=False)
+    pagination = (current_user.followed_posts.order_by(Post.timestamp.desc()).
+        paginate(page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], 
+        error_out=False))
     posts = pagination.items
-    return render_template('main/index.html', form=form, posts=posts, pagination=pagination)
+    return render_template('main/index.html', form=form, 
+                           posts=posts, pagination=pagination)
 
 @main.route('/user/<username>')
 @login_required
@@ -40,10 +42,12 @@ def user(username):
         flash('User %s is not found.' % username)
         abort(404)
     page = request.args.get('page', 1, type=int)
-    pagination = Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).paginate( \
-        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], error_out=False)
+    pagination = (Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).
+        paginate(page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], 
+        error_out=False))
     posts = pagination.items
-    return render_template('main/user.html', user=user, posts=posts, pagination=pagination)
+    return render_template('main/user.html', user=user, 
+                            posts=posts, pagination=pagination)
 
 @main.route('/edit-profile', methods=['GET', 'POST'])
 @login_required
@@ -105,10 +109,26 @@ def edit(id):
     form.body.data = post.body
     return render_template('main/edit_post.html', form=form)
 
-@main.route('/post/<int:id>')
+@main.route('/post/<int:id>', methods=['GET', 'POST'])
 def post(id):
     post = Post.query.get_or_404(id)
-    return render_template('main/post.html', posts=[post])
+    form = CommentForm()
+    if form.validate_on_submit():
+        if current_user.can(Permission.COMMENT):
+            comment = Comment(body=form.body.data, post=post, 
+                author=current_user._get_current_object())
+            db.session.add(comment)
+            db.session.commit()
+            return redirect(url_for('main.post', id=post.id))
+    page = request.args.get('page', 1, type=int)
+    '''if page == -1:
+        page = (post.comments.count() - 1) / current_app \
+            .config['FLASKY_COMMENTS_PER_PAGE']'''
+    pagination = post.comments.order_by(Comment.timestamp.desc()).pagination(page, 
+        per_page=current_app.config['FLASKY_COMMENTS_PER_PAGE'], error_out=False)
+    comments = pagination.items
+    return render_template('main/post.html', posts=[post], 
+        form=form, comments=comments, pagination=pagination)
 
 @main.route('/follow/<username>')
 @login_required
@@ -148,11 +168,12 @@ def followers(username):
         return redirect(url_for('main.index'))
     page = request.args.get('page', 1, type=int)
     pagination = user.followers.order_by(Follow.timestamp.desc()).paginate( \
-        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], error_out=False)
+        page, per_page=current_app.config['FLASKY_FOLLOWERS_PER_PAGE'], error_out=False)
     follows = [{'user': item.follower, 'timestamp': item.timestamp}
                  for item in pagination.items]
     return render_template('main/followers.html', follows=follows, user=user,
-                           endpoint='main.followers', pagination=pagination, title='Followers of')
+                           endpoint='main.followers', pagination=pagination, 
+                           title='Followers of')
 
 @main.route('/followed_by/<username>')
 def followed_by(username):
@@ -161,9 +182,10 @@ def followed_by(username):
         flash('Not found user %s' % username)
         return redirect(url_for('main.index'))
     page = request.args.get('page', 1, type=int)
-    pagination = user.followed.order_by(Follow.timestamp.desc()).paginate( \
-        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], error_out=False)
+    pagination = user.followed.order_by(Follow.timestamp.desc()).paginate(page, 
+        per_page=current_app.config['FLASKY_FOLLOWERS_PER_PAGE'], error_out=False)
     follows = [{'user': item.followed, 'timestamp': item.timestamp}
                  for item in pagination.items]
     return render_template('main/followers.html', follows=follows, user=user,
-                           endpoint='main.followed_by', pagination=pagination, title='Followed by')
+                           endpoint='main.followed_by', pagination=pagination, 
+                           title='Followed by')
