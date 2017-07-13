@@ -1,12 +1,14 @@
 {% extends 'base.html' %}
 {% import 'bootstrap/wtf.html' as wtf %}
-{% import 'main._macros.html' as macros %}
+{% import 'main/_macros.html' as macros %}
 
 {% block title %}Flasky - Post{% endblock %}
 
 {% block page_content %}
 {% include 'main/_posts.html' %}
-<h4 id='comments'>Comments({{ comments.count() }})</h4>
+{% for post in posts %}
+<h4 id='comments'>Comments({{ post.comments.count() }})</h4>
+{% endfor %}
 {% if current_user.can(Permission.COMMENT) %}
 <div class='comment-form'>
     {{ wtf.quick_form(form) }}

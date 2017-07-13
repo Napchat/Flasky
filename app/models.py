@@ -124,7 +124,8 @@ class User(db.Model, UserMixin):
         return True
 
     def can(self, permission):
-        return self.role is not None and (self.role.permissions & permission) == permission
+        return (self.role is not None and 
+            (self.role.permissions & permission) == permission)
 
     def is_administrator(self):
         return self.can(Permission.ADMINISTER)
@@ -254,11 +255,9 @@ class Post(db.Model):
                         'h1', 'h2', 'h3', 'p']
 
         target.body_html = bleach.linkify(bleach.clean(
-            markdown(value, output_format='html'),
-            tags=allowed_tags, strip=True
-        ))
+            markdown(value, output_format='html'),tags=allowed_tags, strip=True))
 
-class Comments(db.Model):
+class Comment(db.Model):
     __tablename__ = 'comments'
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
@@ -272,8 +271,7 @@ class Comments(db.Model):
     def on_changed_body(target, value, oldvalue, initiator):
         allowed_tags = ['a', 'abbr', 'acronym', 'b', 'code', 'em', 'i', 'strong']
         target.body_html = bleach.linkify(bleach.clean(
-            markdown(value, output_format='html'),
-            tags=allowed_tags, strip=True))
+            markdown(value, output_format='html'),tags=allowed_tags, strip=True))
 
 
 
@@ -288,4 +286,4 @@ def load_user(user_id):
 # 'set' event for `body`, which means that it will be automatically invoked
 # whenever the `body` field on any instance of the class is set to a new value.
 db.event.listen(Post.body, 'set', Post.on_changed_body)
-db.event.listen(Comments.body, 'set', Comments.on_changed_body)
+db.event.listen(Comment.body, 'set', Comment.on_changed_body)

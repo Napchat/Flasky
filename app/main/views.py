@@ -2,7 +2,7 @@ from flask import render_template, redirect, flash, url_for, request, current_ap
 from flask_login import login_required, current_user
 
 from . import main
-from ..models import User, db, Role, Permission, Post, Follow, Comments
+from ..models import User, db, Role, Permission, Post, Follow, Comment
 from ..decorators import permission_required, admin_required
 from .forms import EditProfileForm, EditProfileAdminForm, PostForm, CommentForm
 
@@ -11,8 +11,8 @@ from .forms import EditProfileForm, EditProfileAdminForm, PostForm, CommentForm
 @login_required
 def index():
     form = PostForm()
-    if current_user.can(Permission.WRITE_ARTICLES) and \
-            form.validate_on_submit():
+    if (current_user.can(Permission.WRITE_ARTICLES) and 
+            form.validate_on_submit()):
         # `current_user` is a LocalProxy() instance, it is readlly a thin
         # wrapper that contains the actual user object inside. If you want to 
         # get the real user object, you need to call `_get_current_object()`
@@ -29,7 +29,7 @@ def index():
     page = request.args.get('page', 1, type=int)
     pagination = (current_user.followed_posts.order_by(Post.timestamp.desc()).
         paginate(page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], 
-        error_out=False))
+                 error_out=False))
     posts = pagination.items
     return render_template('main/index.html', form=form, 
                            posts=posts, pagination=pagination)
@@ -44,7 +44,7 @@ def user(username):
     page = request.args.get('page', 1, type=int)
     pagination = (Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).
         paginate(page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], 
-        error_out=False))
+                 error_out=False))
     posts = pagination.items
     return render_template('main/user.html', user=user, 
                             posts=posts, pagination=pagination)
@@ -112,19 +112,19 @@ def edit(id):
 @main.route('/post/<int:id>', methods=['GET', 'POST'])
 def post(id):
     post = Post.query.get_or_404(id)
-    form = CommentForm()
-    if form.validate_on_submit():
-        if current_user.can(Permission.COMMENT):
-            comment = Comment(body=form.body.data, post=post, 
-                author=current_user._get_current_object())
-            db.session.add(comment)
-            db.session.commit()
-            return redirect(url_for('main.post', id=post.id))
+    if current_user.can(Permission.COMMENT):
+        form = CommentForm()
+        if form.validate_on_submit():
+                comment = Comment(body=form.body.data, post=post, 
+                    author=current_user._get_current_object())
+                db.session.add(comment)
+                db.session.commit()
+                return redirect(url_for('main.post', id=post.id))
     page = request.args.get('page', 1, type=int)
     '''if page == -1:
         page = (post.comments.count() - 1) / current_app \
             .config['FLASKY_COMMENTS_PER_PAGE']'''
-    pagination = post.comments.order_by(Comment.timestamp.desc()).pagination(page, 
+    pagination = post.comments.order_by(Comment.timestamp.desc()).paginate(page, 
         per_page=current_app.config['FLASKY_COMMENTS_PER_PAGE'], error_out=False)
     comments = pagination.items
     return render_template('main/post.html', posts=[post], 
@@ -189,3 +189,37 @@ def followed_by(username):
     return render_template('main/followers.html', follows=follows, user=user,
                            endpoint='main.followed_by', pagination=pagination, 
                            title='Followed by')
+
+@main.route('/moderate')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def moderate():
+    page = request.args.get('page', 1, type=int)
+    pagination = Comment.query.order_by(Comment.timestamp.desc()).paginate(
+        page, per_page=current_app.config['FLASKY_COMMENTS_PER_PAGE'],
+        error_out=False)
+    comments = pagination.items
+    return render_template('main/moderate.html', comments=comments,
+                           pagination=pagination, page=page)
+
+@main.route('/moderate/enable/<int:id>')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def moderate_enable(id):
+    comment = Comment.query.get_or_404(id)
+    comment.disabled = False
+    db.session.add(comment)
+    db.session.commit()
+    return redirect(url_for('main.moderate', 
+                            page=request.args.get('get', 1, type=int)))
+
+@main.route('/moderate/disable/<int:id>')
+@login_required
+@permission_required(Permission.MODERATE_COMMENTS)
+def moderate_disable(id):
+    comment = Comment.query.get_or_404(id)
+    comment.disabled = True
+    db.session.add(comment)
+    db.session.commit()
+    return redirect(url_for('main.moderate',
+                            page=request.args.get('page', 1, type=int)))
