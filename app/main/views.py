@@ -221,5 +221,7 @@ def moderate_disable(id):
     comment.disabled = True
     db.session.add(comment)
     db.session.commit()
-    return redirect(url_for('main.moderate',
-                            page=request.args.get('page', 1, type=int)))
+    
+    # the `page` argument is necessary for returning to the page that the comment is on.
+    return redirect(url_for('main.moderate', 
+                            page=request.args.get('get', 1, type=int)))
