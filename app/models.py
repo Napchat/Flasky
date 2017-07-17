@@ -5,11 +5,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, AnonymousUserMixin
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-from flask import current_app, request
+from flask import current_app, request, url_for
 from markdown import markdown
 import bleach
 
 from . import login_manager
+from .exceptions import ValidationError
 
 db = SQLAlchemy()
 
@@ -81,6 +82,12 @@ class User(db.Model, UserMixin):
         self.followed.append(Follow(followed=self))
 
     @property
+    def followed_posts(self):
+        '''Show your posts and the posts of whom you followed'''
+        return Post.query.join(Follow, Follow.followed_id==Post.author_id) \
+            .filter(Follow.follower_id==self.id)
+
+    @property
     def password(self):
         raise AttributeError('password is not a readable attribute')
 
@@ -123,6 +130,19 @@ class User(db.Model, UserMixin):
         db.session.commit()
         return True
 
+    def generate_auth_token(self, expiration):
+        s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
+        return s.dump({'auth': self.id})
+
+    @staticmethod
+    def verify_auth_token(token):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except:
+            return None
+        return User.query.get(data['id'])
+
     def can(self, permission):
         return (self.role is not None and 
             (self.role.permissions & permission) == permission)
@@ -162,11 +182,17 @@ class User(db.Model, UserMixin):
     def is_followed_by(self, user):
         return self.followers.filter_by(follower_if=user.id).first() is not None
 
-    @property
-    def followed_posts(self):
-        '''Show your posts and the posts of whom you followed'''
-        return Post.query.join(Follow, Follow.followed_id==Post.author_id) \
-            .filter(Follow.follower_id==self.id)
+    def to_json(self):
+        json_user = {
+            'url': url_for('api.get_post', id=self.id, _external=True),
+            'username': self.username,
+            'member_since': self.member_since,
+            'last_seen': self.last_seen,
+            'posts': url_for('api.get_user_posts', id=self.id, _external=True),
+            'followed_posts': url_for('api.get_user_followed_posts', id=self.id, _external=True),
+            'post_count': self.posts.count()
+        }
+        return json_user
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -256,6 +282,26 @@ class Post(db.Model):
 
         target.body_html = bleach.linkify(bleach.clean(
             markdown(value, output_format='html'),tags=allowed_tags, strip=True))
+    
+    def to_json(self):
+        json_post = {
+            'url': url_for('api.get_post', id=self.id, _external=True),
+            'body': self.body,
+            'body_html': self.body_html,
+            'timestamp': self.timestamp,
+            'author': url_for('api.get_user', id=self.author_id, _external=True),
+            'comments': url_for('api.get_post_comments', id=self.id, _external=True),
+            'comment_count': self.comments.count()
+        }
+        return json_post
+
+    @staticmethod
+    def from_json(json_post):
+        body = json_post.get('body')
+        if body is None or body == '':
+            raise ValidationError('post does not have a body')
+        return Post(body=body)
+
 
 class Comment(db.Model):
     __tablename__ = 'comments'
