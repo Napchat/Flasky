@@ -56,7 +56,7 @@ class SeleniumTestCase(unittest.TestCase):
                 # Remove application context
                 cls.app_context.pop()
         
-        def setUp(self):
+        def setUp(self): 
             if not self.client:
                 self.skipTest('Web browser not available')
 
