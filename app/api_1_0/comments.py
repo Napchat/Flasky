@@ -63,3 +63,17 @@ def new_post_comment(id):
     return (jsonify(comment.to_json()), 201,
             {'Location': url_for('api.get_comment', id=comment.id,
                                  _external=True)})
+
+@api.route('/comments/<int:id>', methods=['PUT'])
+@permission_required(Permission.MODERATE_COMMENTS)
+def comment_moderation(id):
+    comment = Comment.query.get_or_404(id)
+    if not g.current_user.can(Permission.ADMINISTER):
+        return forbidden('Insufficient permissions')
+    if comment.disabled:
+        comment.disabled = False
+    else:
+        comment.disabled = True
+    db.session.add(comment)
+    db.session.commit()
+    return jsonify(comment.to_json())

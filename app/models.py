@@ -131,6 +131,7 @@ class User(db.Model, UserMixin):
         return True
 
     def generate_auth_token(self, expiration):
+        '''Returns a signed token that encodes the user's id field.'''
         s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
         return s.dump({'auth': self.id})
 
@@ -319,7 +320,24 @@ class Comment(db.Model):
         target.body_html = bleach.linkify(bleach.clean(
             markdown(value, output_format='html'),tags=allowed_tags, strip=True))
 
+    def to_json(self):
+        json_comment = {
+            'url': url_for('api.get_comment', id=self.id, _external=True),
+            'body': self.body,
+            'body_html': self.body_html,
+            'timestamp': self.timestamp,
+            'disabled': self.disabled,
+            'author': url_for('api.get_user', id=self.author_id, _external=True),
+            'post': url_for('api.get_post', id=self.post_id, _external=True),
+        }
+        return json_comment
 
+    @staticmethod
+    def from_json(json_comment):
+        body = json_comment.get('body')
+        if body is None or body == '':
+            raise ValidationError('comment does not have a body')
+        return Post(body=body)
 
 @login_manager.user_loader
 def load_user(user_id):
