@@ -225,3 +225,13 @@ def moderate_disable(id):
     # the `page` argument is necessary for returning to the page that the comment is on.
     return redirect(url_for('main.moderate', 
                             page=request.args.get('get', 1, type=int)))
+
+@main.route('/shutdown')
+def server_shutdown():
+    if not current_app.testing:
+        abort(404)
+    shutdown = request.environ.get('werkzeug.server.shutdown')
+    if not shutdown:
+        abort(500)
+    shutdown()
+    return 'Shutting down...'

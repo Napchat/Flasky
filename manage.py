@@ -9,6 +9,9 @@ from app import create_app
 COV = None
 if os.environ.get('FLASK_COVERAGE'):
     import coverage
+    # The `branch` argument enables branch coverage analysis, which, in addition
+    # to tracking which lines of code execute, checks whether for every conditional
+    # both the `True` and `False` cases have executed.
     COV = coverage.Coverage(branch=True, include='app/*')
     COV.start()
 
@@ -32,7 +35,7 @@ def test(coverage=False):
         import sys
         os.environ['FLASK_COVERAGE'] = '1'
         
-        # restart the script with updated environment.
+        # Restart the script with updated environment.
         os.execvp(sys.executable, [sys.executable] + sys.argv)
     import unittest
     tests = unittest.TestLoader().discover('tests')
