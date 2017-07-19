@@ -1,4 +1,10 @@
+import unittest
+import threading
+
 from selenium import webdriver
+
+from app import create_app
+from app.models import db, User, Role, Comment, Post
 
 class SeleniumTestCase(unittest.TestCase):
     client = None
@@ -41,50 +47,50 @@ class SeleniumTestCase(unittest.TestCase):
             # Start the Flask server in a thread
             threading.Thread(target=cls.app.run).start()
 
-        @classmethod
-        def tearDownClass(cls):
-            '''Invoked after the tests in this class'''
-            if cls.client:
-                # Stop the flask server and the browser
-                cls.client.get('http://localhost:5000/shutdown')
-                cls.client.close()
+    @classmethod
+    def tearDownClass(cls):
+        '''Invoked after the tests in this class'''
+        if cls.client:
+            # Stop the flask server and the browser
+            cls.client.get('http://localhost:5000/shutdown')
+            cls.client.close()
 
-                # Destroy database
-                db.drop_all()
-                db.session.remove()
+            # Destroy database
+            db.drop_all()
+            db.session.remove()
 
-                # Remove application context
-                cls.app_context.pop()
+            # Remove application context
+            cls.app_context.pop()
         
-        def setUp(self): 
-            if not self.client:
-                self.skipTest('Web browser not available')
+    def setUp(self): 
+        if not self.client:
+            self.skipTest('Web browser not available')
 
-        def tearDown(self):
-            pass
+    def tearDown(self):
+        pass
 
-        def test_admin_home_page(self):
-            '''Test with Selenium
-            When testing with Selenium, tests send commands to the web browser and never
-            interact with the application directly. The commands closely match the actions
-            that a real user would perform with mouse and keyboard.
-            '''
-            # Navigate to home page
-            self.client.get('http://localhost:5000/')
-            self.assertTrue(re.search('Hello,\s+Stranger!',
-                                      self.client.page_source))
+    def test_admin_home_page(self):
+        '''Test with Selenium
+        When testing with Selenium, tests send commands to the web browser and never
+        interact with the application directly. The commands closely match the actions
+        that a real user would perform with mouse and keyboard.
+        '''
+        # Navigate to home page
+        self.client.get('http://localhost:5000/')
+        self.assertTrue(re.search('Hello,\s+Stranger!',
+                                  self.client.page_source))
             
-            # Navigation to login page
-            self.client.find_element_by_link_text('Log In').click()
-            self.assertTrue('<h1>Login</h1>' in self.client.page_source)
+        # Navigation to login page
+        self.client.find_element_by_link_text('Log In').click()
+        self.assertTrue('<h1>Login</h1>' in self.client.page_source)
 
-            # login
-            self.client.find_element_by_name('email').send_keys(
-                'john@example.com')
-            self.client.find_element_by_name('password').send_keys('cat')
-            self.client.find_element_by_name('submit').click()
-            self.assertTrue(re.search('Hello,\s+john!', self.client.page_source))
+        # login
+        self.client.find_element_by_name('email').send_keys(
+            'john@example.com')
+        self.client.find_element_by_name('password').send_keys('cat')
+        self.client.find_element_by_name('submit').click()
+        self.assertTrue(re.search('Hello,\s+john!', self.client.page_source))
 
-            # Navigate to the user's profile page
-            self.client.find_element_by_link_text('Profile').click()
-            self.assertTrue('<h1>john</h1>' in self.client.page_source)
+        # Navigate to the user's profile page
+        self.client.find_element_by_link_text('Profile').click()
+        self.assertTrue('<h1>john</h1>' in self.client.page_source)
