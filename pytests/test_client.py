@@ -10,14 +10,14 @@ from app.models import db, User, Role, Post, Comment
 class TestFlaskClient(object):
     
     def test_home_page(self, client):
-        response = client.get('/index', follow_redirects=True)
+        response = client.get(url_for('main.index'), follow_redirects=True)
         # `get_data()` returns the response body as a byte array by default; passing
         # `as_text` returns a Unicode string that is much easier to work with.
         assert 'Login' in response.get_data(as_text=True)
 
     def test_register_and_login(self, client):
         # Register a new account
-        response = client.post('/auth/register', data={
+        response = client.post(url_for('auth.register'), data={
             'email': 'john@example.com',
             'username': 'john',
             'password': 'cat',
@@ -26,7 +26,7 @@ class TestFlaskClient(object):
         assert response.status_code==302
 
         # Login with the new account
-        response = client.post('/auth/login', data={
+        response = client.post(url_for('auth.login'), data={
             'email': 'john@example.com',
             'password': 'cat'
         }, follow_redirects=True)
@@ -44,6 +44,6 @@ class TestFlaskClient(object):
         assert 'You have confirmed your account' in data
 
         # Log out
-        response = client.get('/auth/logout', follow_redirects=True)
+        response = client.get(url_for('auth.logout'), follow_redirects=True)
         data = response.get_data(as_text=True)
         assert 'You have been logged out' in data
