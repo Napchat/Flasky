@@ -89,8 +89,8 @@ class HerokuConfig(ProductionConfig):
         # Support for proxy servers
         # When using Heroku, clients do not connect to hosted applications directly
         # but to a ``reverse proxy server`` that redirects requests into the applications.
-        from wekzeug.contrib.fixers import ProxyFix
-        app.wsgi_app = ProxyFix(app.wsgi_app)
+        #from wekzeug.contrib.fixers import ProxyFix
+        #app.wsgi_app = ProxyFix(app.wsgi_app)
 
 config = {
     'development': DevelopmentConfig,
