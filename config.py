@@ -22,6 +22,7 @@ class Config(object):
     FLASKY_COMMENTS_PER_PAGE = 10
     FLASKY_FOLLOWERS_PER_PAGE = 20
     FLASKY_SLOW_DB_QUERY_TIME = 0.5
+    SSL_DISABLE = True
 
     @staticmethod
     def init_app(app):
@@ -70,9 +71,31 @@ class TestingConfig(Config):
     # It is better to disable CSRF protection in the testing configuration.
     WTF_CSRF_ENABLED = False
 
+class HerokuConfig(ProductionConfig):
+
+    SSL_DISABLE = bool(os.environ.get('SSL_DISABLE'))
+
+    @classmethod
+    def init_app(cls, app):
+        ProductionConfig.init_app(app)
+
+        # Log to stderr
+        import logging
+        from logging import StreamHandler
+        file_handler = StreamHandler()
+        file_handler.setLevel(logging.WARNING)
+        app.logger.addHandler(file_handler)
+
+        # Support for proxy servers
+        # When using Heroku, clients do not connect to hosted applications directly
+        # but to a ``reverse proxy server`` that redirects requests into the applications.
+        from wekzeug.contrib.fixers import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app)
+
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
     'production': ProductionConfig,
-    'default': DevelopmentConfig
+    'default': DevelopmentConfig,
+    'heroku': HerokuConfig
 }

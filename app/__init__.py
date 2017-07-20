@@ -52,4 +52,10 @@ def create_app(config_name):
     from .api_1_0 import api as api_1_0_blueprint
     app.register_blueprint(api_1_0_blueprint, url_prefix='/api/v1.0')
 
+    # Flask-SSLify intercept any requests sent to http:// interface and redirects 
+    # them to https://.
+    if not app.debug and not app.testing and not app.config['SSL_DISABLE']:
+        from flask_sslify import SSLify
+        sslify = SSLify(app)
+
     return app
