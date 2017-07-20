@@ -1,10 +1,21 @@
 from flask import render_template, redirect, flash, url_for, request, current_app
 from flask_login import login_required, current_user
+from flask_sqlalchemy import get_debug_queries
 
 from . import main
 from ..models import User, db, Role, Permission, Post, Follow, Comment
 from ..decorators import permission_required, admin_required
 from .forms import EditProfileForm, EditProfileAdminForm, PostForm, CommentForm
+
+@main.after_app_request
+def after_request(response):
+    '''Log queries that are slower than a configured threshold.'''
+    for query in get_debug_queries():
+        if query.duration >= current_app.config['FLASKY_SLOW_DB_QUERY_TIME']:
+            current_app.logger.warning(
+                'Slow query: %s\nParameters: %s\nDuration: %fs\nContext: %s\n' %
+                    (query.statement, query.parameters, query.duration, query.context))
+    return response
 
 @main.route('/', methods=['GET', 'POST'])
 @main.route('/index', methods=['GET', 'POST'])
