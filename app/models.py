@@ -177,6 +177,14 @@ class User(db.Model, UserMixin):
             db.session.delete(f)
             db.sessino.commit()
 
+    @staticmethod
+    def add_self_follows():
+        for user in User.query.all():
+            if not user.is_following(user):
+                user.follow(user)
+                db.session.add(user)
+                db.session.commit()
+
     def is_following(self, user):
         return self.followed.filter_by(followed_id=user.id).first() is not None
 

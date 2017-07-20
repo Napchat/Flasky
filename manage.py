@@ -59,5 +59,20 @@ def profile(length=25, profile_dir=None):
                                       profile_dir=profile_dir)
     app.run()
 
+@manager.command
+def deploy():
+    '''Run deployment tasks.'''
+    from flask_migrate import upgrade
+    from app.models import Role, User
+
+    # Migrate database to latest version
+    upgrade()
+
+    # Create user role
+    Role.insert_roles()
+
+    # Create self-follows for all users
+    User.add_self_follows()
+
 if __name__ == '__main__':
     manager.run()
