@@ -54,8 +54,8 @@ def create_app(config_name):
 
     # Flask-SSLify intercept any requests sent to http:// interface and redirects 
     # them to https://.
-    #if not app.debug and not app.testing and not app.config['SSL_DISABLE']:
-    #    from flask_sslify import SSLify
-    #    sslify = SSLify(app)
+    if not app.debug and not app.testing and not app.config['SSL_DISABLE']:
+        from flask_sslify import SSLify
+        sslify = SSLify(app)
 
     return app
