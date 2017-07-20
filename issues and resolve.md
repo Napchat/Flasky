@@ -1,13 +1,13 @@
 ## 1. Why cannot send email when register and resend?
-Anwser: It is connection problem. You need to use lantern.
+Answer: It is connection problem. You need to use lantern.
 
 ## 2. How to establish one-to-many relationship?
-Anwser: The elements in the 'many' side have a foreign key that points to the linked
+Answer: The elements in the 'many' side have a foreign key that points to the linked
     element on the 'one' side. and the elements in the 'one' side have a relationship
     key for backref.
 
 ## 3. How to establish many-to-many relationship?
-Anwser: Decompose the many-to-many relationship into two one-to-many relationshios from
+Answer: Decompose the many-to-many relationship into two one-to-many relationshios from
     each of the two original tables to the association table.
 
     ```
@@ -33,4 +33,7 @@ Anwser: Decompose the many-to-many relationship into two one-to-many relationshi
     ```
 
 ## 4. Why is there no change when I modified some files before pushing to heroku?
-Anwser: If you changed your file before pushing to heroku, execute `git add` and `git commit` first.
+Answer: If you changed your file before pushing to heroku, execute `git add` and `git commit` first.
+
+## 5. Heroku internal server error?
+Answer: you need to specify the heroku database_url.
